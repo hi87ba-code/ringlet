@@ -79,6 +79,7 @@ table.peq td.v{font-family:var(--num);font-size:1.15rem;font-weight:600;white-sp
 
 <button class="power" id="power" aria-pressed="false"><span class="led" aria-hidden="true"></span><span id="powerLabel">マイクをオンにする</span></button>
 <p class="err" id="err" role="alert"></p>
+<p class="meta" id="ver">読み込み中…（この表示が消えない場合は、ページを再読み込みしてください）</p>
 
 <div class="bridge"><canvas id="meter" role="img" aria-label="31バンドのレベルメーター"></canvas></div>
 
@@ -141,6 +142,7 @@ table.peq td.v{font-family:var(--num);font-size:1.15rem;font-weight:600;white-sp
 <div class="toast" id="toast" role="status"></div>
 
 <script>
+window.addEventListener('error',e=>{const el=document.getElementById('err');if(el)el.textContent='エラー：'+e.message});
 const BANDS=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
 const LABELS=new Set([31.5,63,125,250,500,1000,2000,4000,8000,16000]);
 const bl=f=>f>=1000?(f/1000)+'k':String(f);
@@ -161,12 +163,13 @@ async function start(){
  if(starting)return;showErr('');
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showErr('マイクを使うには、SafariでHTTPSのアドレス（https://〜.github.io/〜）を開いてください。アプリ内ブラウザでは動きません。');return}
  starting=true;$('powerLabel').textContent='起動中…';
+ const wd=setTimeout(()=>{if(starting)showErr('マイクの許可画面が出ない場合は、ページを再読み込みしてからもう一度押してください。ホーム画面から開いている場合は、Safariで開き直してください。')},8000);
  try{ctx=new (window.AudioContext||window.webkitAudioContext)();ctx.resume().catch(()=>{})}
  catch(e){starting=false;$('powerLabel').textContent='マイクをオンにする';showErr('音声機能を起動できませんでした。Safariで開き直してください。');return}
  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})}
  catch(e){starting=false;try{ctx.close()}catch(_){}$('powerLabel').textContent='マイクをオンにする';
   showErr(e&&e.name==='NotAllowedError'?'マイクが許可されていません。アドレスバー左の「ぁあ」→「Webサイトの設定」→「マイク」を「許可」にして、もう一度押してください。':'マイクを起動できませんでした（'+(e&&e.name||'不明')+'）。ページを再読み込みしてもう一度押してください。');return}
- starting=false;
+ starting=false;clearTimeout(wd);
  if(ctx.state!=='running'){try{await Promise.race([ctx.resume(),new Promise(r=>setTimeout(r,800))])}catch(e){}}
  if(ctx.state!=='running')showErr('画面のどこかをタップすると計測が始まります。');
  const src=ctx.createMediaStreamSource(stream);
@@ -185,7 +188,6 @@ function stop(){
 }
 $('power').onclick=()=>running?stop():start();
 document.addEventListener('touchend',()=>{if(ctx&&running&&ctx.state!=='running'){ctx.resume().then(()=>{if(ctx.state==='running')showErr('')}).catch(()=>{})}},{passive:true});
-window.addEventListener('error',e=>showErr('エラー：'+e.message));
 window.addEventListener('unhandledrejection',e=>showErr('エラー：'+(e.reason&&e.reason.message||e.reason)));
 document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&running){try{wake=await navigator.wakeLock?.request('screen')}catch(e){}}});
 
@@ -352,6 +354,7 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
 });
 addEventListener('resize',()=>{drawMeter();drawTone()});
 drawMeter();
+$('ver').textContent='準備完了（バージョン3）';
 </script>
 </body>
 </html>
