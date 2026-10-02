@@ -156,13 +156,19 @@ const lv=new Float32Array(31),disp=new Float32Array(31).fill(-160),peak=new Floa
 let top=-40,tab='ring',activeBand=-1,lastHit=0;
 
 function showErr(m){$('err').textContent=m}
+let starting=false;
 async function start(){
- showErr('');
- if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showErr('マイクを使うには、このページをHTTPSのアドレス（GitHub Pagesなど）で開いてください。');return}
+ if(starting)return;showErr('');
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showErr('マイクを使うには、SafariでHTTPSのアドレス（https://〜.github.io/〜）を開いてください。アプリ内ブラウザでは動きません。');return}
+ starting=true;$('powerLabel').textContent='起動中…';
+ try{ctx=new (window.AudioContext||window.webkitAudioContext)();ctx.resume().catch(()=>{})}
+ catch(e){starting=false;$('powerLabel').textContent='マイクをオンにする';showErr('音声機能を起動できませんでした。Safariで開き直してください。');return}
  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})}
- catch(e){showErr('マイクが許可されていません。設定アプリ → Safari → マイク で許可してから、もう一度押してください。');return}
- ctx=new (window.AudioContext||window.webkitAudioContext)();
- await ctx.resume();
+ catch(e){starting=false;try{ctx.close()}catch(_){}$('powerLabel').textContent='マイクをオンにする';
+  showErr(e&&e.name==='NotAllowedError'?'マイクが許可されていません。アドレスバー左の「ぁあ」→「Webサイトの設定」→「マイク」を「許可」にして、もう一度押してください。':'マイクを起動できませんでした（'+(e&&e.name||'不明')+'）。ページを再読み込みしてもう一度押してください。');return}
+ starting=false;
+ if(ctx.state!=='running'){try{await Promise.race([ctx.resume(),new Promise(r=>setTimeout(r,800))])}catch(e){}}
+ if(ctx.state!=='running')showErr('画面のどこかをタップすると計測が始まります。');
  const src=ctx.createMediaStreamSource(stream);
  an=ctx.createAnalyser();an.fftSize=16384;an.smoothingTimeConstant=0;src.connect(an);
  buf=new Float32Array(an.frequencyBinCount);binHz=ctx.sampleRate/an.fftSize;
@@ -178,6 +184,9 @@ function stop(){
  meas=null;$('prog').style.width='0';
 }
 $('power').onclick=()=>running?stop():start();
+document.addEventListener('touchend',()=>{if(ctx&&running&&ctx.state!=='running'){ctx.resume().then(()=>{if(ctx.state==='running')showErr('')}).catch(()=>{})}},{passive:true});
+window.addEventListener('error',e=>showErr('エラー：'+e.message));
+window.addEventListener('unhandledrejection',e=>showErr('エラー：'+(e.reason&&e.reason.message||e.reason)));
 document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&running){try{wake=await navigator.wakeLock?.request('screen')}catch(e){}}});
 
 function bands(){for(let b=0;b<31;b++){const[lo,hi]=ranges[b];let s=0;for(let k=lo;k<=hi;k++)s+=10**(buf[k]/10);lv[b]=10*Math.log10(s+1e-20)}}
