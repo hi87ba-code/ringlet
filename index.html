@@ -155,7 +155,7 @@ readColors();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('chan
 
 let ctx,an,stream,buf,binHz,ranges,running=false,raf,wake;
 const lv=new Float32Array(31),disp=new Float32Array(31).fill(-160),peak=new Float32Array(31).fill(-160),peakT=new Float64Array(31);
-let top=-40,tab='ring',activeBand=-1,lastHit=0;
+let meterTop=-40,tab='ring',activeBand=-1,lastHit=0;
 
 function showErr(m){$('err').textContent=m}
 let starting=false;
@@ -255,7 +255,7 @@ function drawMeter(){
  const dpr=devicePixelRatio||1,W=meter.clientWidth,H=meter.clientHeight;
  if(meter.width!==Math.round(W*dpr)||meter.height!==Math.round(H*dpr)){meter.width=Math.round(W*dpr);meter.height=Math.round(H*dpr)}
  const g=meter.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
- const LH=18,S=24,cw=W/31,gap=Math.max(1,cw*.2),sh=(H-LH)/S,lo=top-60;
+ const LH=18,S=24,cw=W/31,gap=Math.max(1,cw*.2),sh=(H-LH)/S,lo=meterTop-60;
  for(let b=0;b<31;b++){
   const x=b*cw,lit=Math.round(clamp((disp[b]-lo)/60,0,1)*S),pk=Math.floor(clamp((peak[b]-lo)/60,0,.999)*S);
   for(let s=0;s<S;s++){
@@ -341,7 +341,7 @@ function loop(){
   if(lv[b]>peak[b]){peak[b]=lv[b];peakT[b]=now}else if(!hold&&now-peakT[b]>1500)peak[b]-=0.6;
   if(lv[b]>mx)mx=lv[b];
  }
- top=clamp(Math.max(mx+6,top-0.08),-90,10);
+ meterTop=clamp(Math.max(mx+6,meterTop-0.08),-90,10);
  if(tab==='ring'){detect(now);if(activeBand>=0&&now-lastHit>6000)idle()}
  if(meas)accMeas(now);
  drawMeter();
@@ -354,7 +354,7 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
 });
 addEventListener('resize',()=>{drawMeter();drawTone()});
 drawMeter();
-$('ver').textContent='準備完了（バージョン3）';
+$('ver').textContent='準備完了（バージョン4）';
 </script>
 </body>
 </html>
